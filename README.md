@@ -80,17 +80,6 @@ This repository is intended for **educational purposes only**. Use these scripts
 
 ---
 
-## Contributing
 
-We welcome contributions! To contribute:
-
-1. Fork this repository.
-2. Create a new branch:
-   ```bash
-   git checkout -b feature-name
-   ```
-3. Make your changes and submit a pull request.
-
----
 
 
